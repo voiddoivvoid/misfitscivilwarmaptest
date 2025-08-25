@@ -1,0 +1,281 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>MISFITS Civil War Map</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+  <style>
+    :root {
+      --tfr: #3b82f6;
+      --sc:  #ef4444;
+      --neutral: #d1d5db;
+      --background: #f9fafb;
+      --border: #ffffff;
+      --panel-bg: #ffffffee;
+    }
+    html, body {
+      height: 100%;
+      margin: 0;
+      font-family: system-ui, sans-serif;
+      background: var(--background);
+    }
+    #map {
+      height: calc(100% - 80px);
+      width: 100%;
+    }
+    #controls {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 12px;
+      padding: 8px 16px;
+      background: #0f172a;
+      color: #e2e8f0;
+      height: 80px;
+      box-sizing: border-box;
+    }
+    #controls label {
+      font-size: 14px;
+    }
+    #timelineLabel {
+      min-width: 120px;
+      text-align: left;
+      font-weight: 600;
+    }
+    #timelineRange {
+      width: 180px;
+    }
+    #legend {
+      position: absolute;
+      bottom: 12px;
+      right: 12px;
+      padding: 10px 12px;
+      background: var(--panel-bg);
+      border-radius: 8px;
+      font-size: 12px;
+      line-height: 1.4;
+    }
+    #legend .dot {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      margin-right: 6px;
+      vertical-align: middle;
+    }
+  </style>
+</head>
+<body>
+  <div id="controls">
+    <span id="timelineLabel">Date:</span>
+    <input type="range" id="timelineRange" min="0" max="0" value="0" step="1" />
+    <button id="playPause">Play</button>
+    <input type="file" id="csvImport" accept=".csv" />
+    <label><input type="checkbox" id="toggleBorders" checked /> Show borders</label>
+  </div>
+  <div id="map"></div>
+  <div id="legend">
+    <div><span class="dot" style="background: var(--tfr);"></span>Task Force Reaper</div>
+    <div><span class="dot" style="background: var(--sc);"></span>Shadow Company</div>
+    <div><span class="dot" style="background: var(--neutral);"></span>Neutral / Unspecified</div>
+  </div>
+
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+          integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+          crossorigin=""></script>
+  <script>
+    // Global state
+    let controlData = { timeline: {}, lore: {} };
+    let timelineDates = [];
+    let currentDateIndex = 0;
+    let playing = false;
+    let playInterval = null;
+    let map, geoLayer;
+    let showBorders = true;
+
+    // Fetch data and initialize
+    async function loadData() {
+      try {
+        const controlResp = await fetch('data/control.json');
+        controlData = await controlResp.json();
+      } catch (err) {
+        console.warn('Failed to load control.json', err);
+        controlData = { timeline: {}, lore: {} };
+      }
+      timelineDates = Object.keys(controlData.timeline).sort();
+      if (!timelineDates.length) {
+        timelineDates = ['2025-01-01']; // fallback date
+        controlData.timeline[timelineDates[0]] = {};
+      }
+      // initialize range slider
+      const range = document.getElementById('timelineRange');
+      range.max = timelineDates.length - 1;
+      range.value = 0;
+      document.getElementById('timelineLabel').textContent = timelineDates[0];
+
+      // load states GeoJSON
+      const statesResp = await fetch('data/us-states.geojson');
+      const statesGeo = await statesResp.json();
+      initMap(statesGeo);
+      updateMapToDate(timelineDates[0]);
+    }
+
+    function initMap(statesGeo) {
+      map = L.map('map', {
+        center: [37.8, -96],
+        zoom: 4,
+        minZoom: 3,
+        maxZoom: 7,
+        scrollWheelZoom: true
+      });
+      // Light basemap; optional; using a faint OSM layer for context
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors',
+        opacity: 0.1
+      }).addTo(map);
+      geoLayer = L.geoJSON(statesGeo, {
+        style: feature => ({
+          fillColor: getFillColor(feature),
+          color: showBorders ? 'white' : 'transparent',
+          weight: showBorders ? 1 : 0,
+          fillOpacity: 0.8
+        }),
+        onEachFeature: (feature, layer) => {
+          layer.on({
+            click: () => {
+              const code = getStateCode(feature);
+              const date = timelineDates[currentDateIndex];
+              const faction = getStateFaction(code, date);
+              const lore = getStateLore(code);
+              const name = feature.properties.name || code;
+              const factionName = faction === 'TFR' ? 'Task Force Reaper' :
+                                   faction === 'SC'  ? 'Shadow Company' :
+                                   'Neutral / Unspecified';
+              const content = '<strong>' + name + '</strong><br/>' +
+                              'Controlled by: ' + factionName + '<br/>' +
+                              (lore || '');
+              layer.bindPopup(content).openPopup();
+            }
+          });
+        }
+      }).addTo(map);
+    }
+
+    function getStateCode(feature) {
+    // Return the two-letter state code. Fall back to the id or name if STUSPS/postal/state_code are missing.
+    return (
+      feature.properties.STUSPS ||
+      feature.properties.postal ||
+      feature.properties.state_code ||
+      feature.id ||
+      feature.properties.name
+    );
+    }
+    function getStateFaction(code, date) {
+      const dayData = controlData.timeline[date] || {};
+      return dayData[code] || null;
+    }
+    function getStateLore(code) {
+      return controlData.lore[code] || '';
+    }
+    function getFillColor(feature) {
+      const code = getStateCode(feature);
+      const date = timelineDates[currentDateIndex];
+      const faction = getStateFaction(code, date);
+      if (faction === 'TFR') return getComputedStyle(document.documentElement).getPropertyValue('--tfr');
+      if (faction === 'SC') return getComputedStyle(document.documentElement).getPropertyValue('--sc');
+      return getComputedStyle(document.documentElement).getPropertyValue('--neutral');
+    }
+    function updateMapStyles() {
+      geoLayer.eachLayer(layer => {
+        const style = {
+          fillColor: getFillColor(layer.feature),
+          color: showBorders ? 'white' : 'transparent',
+          weight: showBorders ? 1 : 0,
+          fillOpacity: 0.8
+        };
+        layer.setStyle(style);
+      });
+    }
+    function updateMapToDate(date) {
+      currentDateIndex = timelineDates.indexOf(date);
+      if (currentDateIndex < 0) currentDateIndex = 0;
+      // update slider and label
+      const range = document.getElementById('timelineRange');
+      range.value = currentDateIndex;
+      document.getElementById('timelineLabel').textContent = date;
+      updateMapStyles();
+    }
+
+    // Event listeners
+    document.getElementById('timelineRange').addEventListener('input', e => {
+      const index = parseInt(e.target.value, 10);
+      const date = timelineDates[index];
+      updateMapToDate(date);
+    });
+    document.getElementById('playPause').addEventListener('click', () => {
+      if (!playing) {
+        playing = true;
+        document.getElementById('playPause').textContent = 'Pause';
+        playInterval = setInterval(() => {
+          let next = currentDateIndex + 1;
+          if (next >= timelineDates.length) {
+            next = 0;
+          }
+          updateMapToDate(timelineDates[next]);
+        }, 2000);
+      } else {
+        playing = false;
+        document.getElementById('playPause').textContent = 'Play';
+        clearInterval(playInterval);
+      }
+    });
+    document.getElementById('toggleBorders').addEventListener('change', e => {
+      showBorders = e.target.checked;
+      updateMapStyles();
+    });
+    document.getElementById('csvImport').addEventListener('change', e => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const text = event.target.result;
+        const rows = text.split(/\r?\n/);
+        rows.forEach(row => {
+          if (!row.trim()) return;
+          const parts = row.split(',');
+          if (parts.length < 3) return;
+          const date = parts[0].trim();
+          const state = parts[1].trim();
+          const faction = parts[2].trim();
+          const lore = parts.slice(3).join(',').trim();
+          if (!date || !state) return;
+          if (!controlData.timeline[date]) {
+            controlData.timeline[date] = {};
+          }
+          controlData.timeline[date][state] = faction;
+          if (lore) {
+            controlData.lore[state] = lore;
+          }
+        });
+        // refresh timeline list & slider
+        timelineDates = Object.keys(controlData.timeline).sort();
+        const range = document.getElementById('timelineRange');
+        range.max = timelineDates.length - 1;
+        currentDateIndex = 0;
+        updateMapToDate(timelineDates[0]);
+      };
+      reader.readAsText(file);
+      // reset input so same file can be re-imported later
+      e.target.value = '';
+    });
+
+    // Start
+    loadData();
+  </script>
+</body>
+</html>
