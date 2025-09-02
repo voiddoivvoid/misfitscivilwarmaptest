@@ -1,4 +1,4 @@
-<!doctype html>
+bu<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
@@ -115,6 +115,7 @@
     let stateLabelLayer;
     // optional manual nudges for crowded states
     const LABEL_OVERRIDES = {
+      'AK':[64.5,-152.5], 'HI':[20.8,-157.5],  // NEW: keep codes on AK/HI
       'CT':[41.6,-72.5],'RI':[41.7,-71.6],'MA':[42.3,-71.8],'NJ':[40.2,-74.5],
       'DE':[39.1,-75.4],'MD':[39.3,-76.8],'NH':[43.8,-71.6],'VT':[44.2,-72.7],
       'DC':[38.9,-77.03],'MI':[44.75,-86.0],'FL':[28.7,-82.0],'LA':[31.0,-92.5]
@@ -203,7 +204,9 @@
       buildStateLabels(geoLayer);
       if (document.getElementById('toggleLabels')?.checked) {
         stateLabelLayer.addTo(map);
+        loadWarLayers();
       }
+
 
       // wire the label toggle
       const labelsToggle = document.getElementById('toggleLabels');
@@ -293,6 +296,54 @@
         stateLabelLayer.addLayer(marker);
       });
     }
+
+    async function loadWarLayers() {
+  try {
+    const resp = await fetch('data/warlayers.json', { cache: 'no-store' });
+    if (!resp.ok) return; // silently ignore if not present yet
+    const data = await resp.json();
+
+    const css = k => getComputedStyle(document.documentElement).getPropertyValue(k).trim();
+    const colorFor = f => f === 'TFR' ? css('--tfr') : f === 'SC' ? css('--sc') : css('--neutral');
+
+    // Pockets (semi-opaque polygons)
+    if (data.pockets) {
+      L.geoJSON(data.pockets, {
+        style: ft => ({
+          color: colorFor(ft.properties?.faction),
+          weight: 1,
+          fillColor: colorFor(ft.properties?.faction),
+          fillOpacity: 0.35
+        })
+      }).addTo(map);
+    }
+
+    // Supply lines (bold polylines)
+    if (data.lines) {
+      L.geoJSON(data.lines, {
+        style: ft => ({
+          color: colorFor(ft.properties?.faction),
+          weight: 5,
+          opacity: 0.95
+        })
+      }).addTo(map);
+    }
+
+    // Units / HQ markers (use PNGs if present)
+    const iconFor = kind => L.icon({
+      iconUrl: `data/icons/${kind === 'hq' ? 'hq' : 'unit'}.png`,
+      iconSize: [20, 20],
+      iconAnchor: [10, 10]
+    });
+    if (data.points) {
+      L.geoJSON(data.points, {
+        pointToLayer: (ft, latlng) => L.marker(latlng, { icon: iconFor(ft.properties?.icon) })
+      }).addTo(map);
+    }
+  } catch (e) {
+    // ignore if missing or invalid
+  }
+}
 
     // Event listeners
     document.getElementById('timelineRange').addEventListener('input', e => {
