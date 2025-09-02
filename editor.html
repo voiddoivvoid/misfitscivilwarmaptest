@@ -75,6 +75,12 @@
       <option value="unit">Unit / Marker (Point)</option>
     </select>
 
+    <label>Marker</label>
+    <select id="markerKind">
+      <option value="unit">Unit</option>
+      <option value="hq">HQ</option>
+    </select>
+
     <label>Date</label>
     <input id="editDate" type="date" />
   </div>
@@ -106,9 +112,6 @@
   const map = L.map('map', { zoomControl: true, attributionControl: false, preferCanvas: true })
                 .setView([39.5, -98.35], 4);
 
-  // Optional basemap off; pure overlay look
-  // L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom: 7}).addTo(map);
-
   // Camera: allow full US including AK/HI; start on lower-48
   const lower48 = L.latLngBounds([24.396308, -124.848974], [49.384358, -66.885444]);
   const usAll   = L.latLngBounds([18.0, -179.9], [72.0, -60.0]);
@@ -120,13 +123,10 @@
 
   // Load states
   let statesLayer;
-  fetch('data/us-states.geojson')
+  fetch('data/us-states.geojson', {cache:'no-store'})
     .then(r => r.json())
     .then(geo => {
-      statesLayer = L.geoJSON(geo, {
-        style: styleBorders,
-        onEachFeature: (feature, layer) => layer.bindTooltip(feature.properties.name, {sticky:true, opacity:0.8})
-      }).addTo(map);
+      statesLayer = L.geoJSON(geo, { style: styleBorders }).addTo(map);
       buildLabels(statesLayer);
       if (document.getElementById('chkLabels').checked) labelLayer.addTo(map);
     });
@@ -136,9 +136,13 @@
   map.getPane('labelPane').classList.add('label-pane');
   map.getPane('labelPane').style.zIndex = 650;
   let labelLayer = L.layerGroup([], {pane: 'labelPane'});
-  const OV = {'CT':[41.6,-72.5],'RI':[41.7,-71.6],'MA':[42.3,-71.8],'NJ':[40.2,-74.5],
-              'DE':[39.1,-75.4],'MD':[39.3,-76.8],'NH':[43.8,-71.6],'VT':[44.2,-72.7],'DC':[38.9,-77.03],
-              'MI':[44.75,-86.0],'FL':[28.7,-82.0],'LA':[31.0,-92.5]};
+  // Explicit overrides incl. AK/HI
+  const OV = {
+    'AK':[64.5,-152.5],'HI':[20.8,-157.5],
+    'CT':[41.6,-72.5],'RI':[41.7,-71.6],'MA':[42.3,-71.8],'NJ':[40.2,-74.5],
+    'DE':[39.1,-75.4],'MD':[39.3,-76.8],'NH':[43.8,-71.6],'VT':[44.2,-72.7],'DC':[38.9,-77.03],
+    'MI':[44.75,-86.0],'FL':[28.7,-82.0],'LA':[31.0,-92.5]
+  };
   function getCode(f){
     const p=f.properties||{}; return p.STUSPS||p.postal||p.state_code||f.id||p.name||'??';
   }
@@ -161,10 +165,17 @@
     statesLayer && statesLayer.setStyle(s);
   });
 
-  // ---- Draw feature layers ----
+  // ---- Draw: single edit group for reliable Save/Cancel ----
+  const editGroup = new L.FeatureGroup().addTo(map);  // all created layers go here
   const pockets = new L.FeatureGroup().addTo(map);   // polygons
   const lines   = new L.FeatureGroup().addTo(map);   // polylines
   const points  = new L.FeatureGroup().addTo(map);   // markers
+
+  const editToolbar = new L.Control.Draw({
+    edit: { featureGroup: editGroup },
+    draw: false // we'll programmatically enable the chosen tool
+  });
+  map.addControl(editToolbar);
 
   function factionColor(v){
     if(v==='TFR') return getComputedStyle(document.documentElement).getPropertyValue('--tfr').trim();
@@ -173,49 +184,56 @@
     return getComputedStyle(document.documentElement).getPropertyValue('--neutral').trim();
   }
 
-  function currentMeta(){
-    const faction = document.getElementById('faction').value;
-    const date = document.getElementById('editDate').value || null;
-    return { faction, date };
+  function markerIcon(){
+    const kind = document.getElementById('markerKind').value;
+    const size = kind==='hq' ? 20 : 18;
+    const path = kind==='hq' ? 'data/icons/hq.png' : 'data/icons/unit.png';
+    const ico = L.icon({ iconUrl: path, iconSize:[size,size], iconAnchor:[size/2,size/2] });
+    // fallback to text symbol
+    const fallback = L.divIcon({className:'state-label', html:(kind==='hq'?'✖':'◆'), iconSize:[size,size], iconAnchor:[size/2,size/2]});
+    return ico; // browsers will still try load; if missing it shows broken img, but you can add PNGs later
   }
 
-  // draw options that change based on selected tool/faction
-  let drawControl;
-  function refreshDrawControl(){
-    if (drawControl) { map.removeControl(drawControl); }
+  let activeHandler = null;
+  function enableDraw(){
+    if (activeHandler) try { activeHandler.disable(); } catch(e){}
     const tool = document.getElementById('toolKind').value;
-    const col = factionColor(document.getElementById('faction').value);
-    drawControl = new L.Control.Draw({
-      edit: { featureGroup: new L.FeatureGroup([pockets,lines,points]) },
-      draw: {
-        polygon: tool==='pocket' ? { shapeOptions:{color:col, weight:1, fillColor:col, fillOpacity:0.35} } : false,
-        polyline: tool==='supply' ? { shapeOptions:{color:col, weight:3, opacity:0.9} } : false,
-        rectangle:false, circle:false, circlemarker:false,
-        marker: tool==='unit' ? { icon: L.divIcon({className:'state-label', html:'⚑', iconSize:[18,18], iconAnchor:[9,9]}) } : false
-      }
-    });
-    map.addControl(drawControl);
+    const col  = factionColor(document.getElementById('faction').value);
+    if (tool==='pocket'){
+      activeHandler = new L.Draw.Polygon(map, { shapeOptions:{ color:col, weight:1, fillColor:col, fillOpacity:0.35 } });
+    } else if (tool==='supply'){
+      activeHandler = new L.Draw.Polyline(map, { shapeOptions:{ color:col, weight:5, opacity:0.95 } });
+    } else {
+      activeHandler = new L.Draw.Marker(map, { icon: markerIcon() });
+    }
+    activeHandler.enable();
   }
 
-  refreshDrawControl();
-  document.getElementById('toolKind').addEventListener('change', refreshDrawControl);
-  document.getElementById('faction').addEventListener('change', refreshDrawControl);
+  document.getElementById('toolKind').addEventListener('change', enableDraw);
+  document.getElementById('faction').addEventListener('change', enableDraw);
+  document.getElementById('markerKind').addEventListener('change', enableDraw);
+  enableDraw(); // arm once
 
   map.on(L.Draw.Event.CREATED, function (e) {
     const {layerType, layer} = e;
-    const meta = currentMeta();
+    const faction = document.getElementById('faction').value;
+    const date = document.getElementById('editDate').value || null;
+
     if (layerType === 'polygon') {
-      layer.setStyle({ color: factionColor(meta.faction), fillColor: factionColor(meta.faction), fillOpacity: 0.35, weight: 1 });
-      layer.feature = { type:'Feature', properties: { kind:'pocket', faction: meta.faction, date: meta.date }, geometry: {} };
+      layer.setStyle({ color: factionColor(faction), fillColor: factionColor(faction), fillOpacity: 0.35, weight: 1 });
       pockets.addLayer(layer);
+      layer.feature = { type:'Feature', properties: { kind:'pocket', faction, date }, geometry:{} };
     } else if (layerType === 'polyline') {
-      layer.setStyle({ color: factionColor(meta.faction), weight: 3, opacity: 0.9 });
-      layer.feature = { type:'Feature', properties: { kind:'supply', faction: meta.faction, date: meta.date }, geometry: {} };
+      layer.setStyle({ color: factionColor(faction), weight: 5, opacity: 0.95 });
       lines.addLayer(layer);
+      layer.feature = { type:'Feature', properties: { kind:'supply', faction, date }, geometry:{} };
     } else if (layerType === 'marker') {
-      layer.feature = { type:'Feature', properties: { kind:'unit', faction: meta.faction, date: meta.date }, geometry: {} };
       points.addLayer(layer);
+      layer.feature = { type:'Feature', properties: { kind:'unit', icon: document.getElementById('markerKind').value, faction, date }, geometry:{} };
     }
+
+    editGroup.addLayer(layer);
+    setTimeout(enableDraw, 0);
   });
 
   // Export/import helpers
@@ -223,7 +241,6 @@
     const feats = [];
     group.eachLayer(l => {
       const gj = l.toGeoJSON();
-      // carry over our props (Leaflet.draw may not keep them)
       if (l.feature && l.feature.properties) gj.properties = Object.assign({}, gj.properties||{}, l.feature.properties);
       feats.push(gj);
     });
@@ -252,12 +269,12 @@
           if(!fc || !fc.features) return;
           fc.features.forEach(ft => {
             const lay = L.geoJSON(ft, {
-              style: (ft.geometry.type==='LineString') ? { color:factionColor(ft.properties?.faction), weight:3 } :
+              style: (ft.geometry.type==='LineString') ? { color:factionColor(ft.properties?.faction), weight:5, opacity:0.95 } :
                     (ft.geometry.type==='Polygon' || ft.geometry.type==='MultiPolygon') ? { color:factionColor(ft.properties?.faction), weight:1, fillColor:factionColor(ft.properties?.faction), fillOpacity:0.35 } :
                     undefined,
-              pointToLayer: (ft, latlng) => L.marker(latlng, { icon: L.divIcon({className:'state-label', html:'⚑', iconSize:[18,18], iconAnchor:[9,9]}) })
+              pointToLayer: (ft, latlng) => L.marker(latlng, { icon: markerIcon() })
             });
-            lay.eachLayer(l => { l.feature = {type:'Feature', properties: Object.assign({kind}, ft.properties||{}), geometry:{} }; target.addLayer(l); });
+            lay.eachLayer(l => { l.feature = {type:'Feature', properties: Object.assign({kind}, ft.properties||{}), geometry:{} }; target.addLayer(l); editGroup.addLayer(l); });
           });
         }
         addFC(data.pockets, pockets, 'pocket');
@@ -270,11 +287,15 @@
   });
 
   document.getElementById('btnExportPng').addEventListener('click', async ()=>{
+    const prev = { center: map.getCenter(), zoom: map.getZoom() };
+    map.fitBounds(usAll, { animate:false, padding:[10,10] });
+    await new Promise(r => setTimeout(r, 150));
     const node = document.getElementById('map');
     const canvas = await html2canvas(node, {useCORS:true, backgroundColor:null});
     const url = canvas.toDataURL('image/png');
     const a = Object.assign(document.createElement('a'), { href: url, download: 'misfits-map.png' });
     document.body.appendChild(a); a.click(); a.remove();
+    map.setView(prev.center, prev.zoom, { animate:false });
   });
 </script>
 
