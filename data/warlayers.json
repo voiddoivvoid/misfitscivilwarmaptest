@@ -1,14 +1,475 @@
 {
   "pockets": {
     "type": "FeatureCollection",
-    "features": []
+    "features": [
+      {
+        "type": "Feature",
+        "properties": {
+          "kind": "pocket",
+          "faction": "TFR",
+          "date": null
+        },
+        "geometry": {
+          "type": "Polygon",
+          "coordinates": [
+            [
+              [
+                -111.272045,
+                43.007127
+              ],
+              [
+                -111.052353,
+                39.338243
+              ],
+              [
+                -105.647924,
+                39.440097
+              ],
+              [
+                -106.394878,
+                42.781843
+              ],
+              [
+                -111.272045,
+                43.007127
+              ]
+            ]
+          ]
+        }
+      },
+      {
+        "type": "Feature",
+        "properties": {
+          "kind": "pocket",
+          "faction": "SC",
+          "date": null
+        },
+        "geometry": {
+          "type": "Polygon",
+          "coordinates": [
+            [
+              [
+                -102.747987,
+                43.263586
+              ],
+              [
+                -95.366328,
+                42.490984
+              ],
+              [
+                -96.684482,
+                37.479567
+              ],
+              [
+                -102.264664,
+                38.311546
+              ],
+              [
+                -99.84805,
+                36.178607
+              ],
+              [
+                -102.747987,
+                41.872487
+              ],
+              [
+                -94.839067,
+                39.879745
+              ],
+              [
+                -102.220726,
+                43.231587
+              ],
+              [
+                -102.747987,
+                43.263586
+              ]
+            ]
+          ]
+        }
+      },
+      {
+        "type": "Feature",
+        "properties": {
+          "kind": "pocket",
+          "faction": "CUB",
+          "date": null
+        },
+        "geometry": {
+          "type": "Polygon",
+          "coordinates": [
+            [
+              [
+                -119.356719,
+                40.650718
+              ],
+              [
+                -113.820475,
+                36.602962
+              ],
+              [
+                -113.468967,
+                40.684039
+              ],
+              [
+                -119.356719,
+                40.650718
+              ]
+            ]
+          ]
+        }
+      }
+    ]
   },
   "lines": {
     "type": "FeatureCollection",
-    "features": []
+    "features": [
+      {
+        "type": "Feature",
+        "properties": {
+          "kind": "supply",
+          "faction": "CUB",
+          "date": null
+        },
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              -99.27707,
+              39.778394
+            ],
+            [
+              -114.919156,
+              37.792515
+            ]
+          ]
+        }
+      }
+    ]
   },
   "points": {
     "type": "FeatureCollection",
-    "features": []
+    "features": [
+      {
+        "type": "Feature",
+        "properties": {
+          "kind": "unit",
+          "icon": "unit",
+          "faction": "CUB",
+          "date": null
+        },
+        "geometry": {
+          "type": "Point",
+          "coordinates": [
+            -110.437215,
+            37.235139
+          ]
+        }
+      },
+      {
+        "type": "Feature",
+        "properties": {
+          "kind": "unit",
+          "icon": "unit",
+          "faction": "CUB",
+          "date": null
+        },
+        "geometry": {
+          "type": "Point",
+          "coordinates": [
+            -110.261461,
+            36.107656
+          ]
+        }
+      },
+      {
+        "type": "Feature",
+        "properties": {
+          "kind": "unit",
+          "icon": "unit",
+          "faction": "CUB",
+          "date": null
+        },
+        "geometry": {
+          "type": "Point",
+          "coordinates": [
+            -110.261461,
+            36.107656
+          ]
+        }
+      },
+      {
+        "type": "Feature",
+        "properties": {
+          "kind": "unit",
+          "icon": "unit",
+          "faction": "CUB",
+          "date": null
+        },
+        "geometry": {
+          "type": "Point",
+          "coordinates": [
+            -109.029849,
+            37.215047
+          ]
+        }
+      },
+      {
+        "type": "Feature",
+        "properties": {
+          "kind": "unit",
+          "icon": "unit",
+          "faction": "CUB",
+          "date": null
+        },
+        "geometry": {
+          "type": "Point",
+          "coordinates": [
+            -109.031377,
+            35.89402
+          ]
+        }
+      },
+      {
+        "type": "Feature",
+        "properties": {
+          "kind": "unit",
+          "icon": "unit",
+          "faction": "CUB",
+          "date": null
+        },
+        "geometry": {
+          "type": "Point",
+          "coordinates": [
+            -108.152608,
+            37.024602
+          ]
+        }
+      },
+      {
+        "type": "Feature",
+        "properties": {
+          "kind": "unit",
+          "icon": "unit",
+          "faction": "CUB",
+          "date": null
+        },
+        "geometry": {
+          "type": "Point",
+          "coordinates": [
+            -108.152608,
+            37.059667
+          ]
+        }
+      },
+      {
+        "type": "Feature",
+        "properties": {
+          "kind": "unit",
+          "icon": "unit",
+          "faction": "CUB",
+          "date": null
+        },
+        "geometry": {
+          "type": "Point",
+          "coordinates": [
+            -108.019196,
+            36.353041
+          ]
+        }
+      },
+      {
+        "type": "Feature",
+        "properties": {
+          "kind": "unit",
+          "icon": "unit",
+          "faction": "CUB",
+          "date": null
+        },
+        "geometry": {
+          "type": "Point",
+          "coordinates": [
+            -108.019196,
+            36.353041
+          ]
+        }
+      },
+      {
+        "type": "Feature",
+        "properties": {
+          "kind": "unit",
+          "icon": "unit",
+          "faction": "CUB",
+          "date": null
+        },
+        "geometry": {
+          "type": "Point",
+          "coordinates": [
+            -105.033006,
+            37.30491
+          ]
+        }
+      },
+      {
+        "type": "Feature",
+        "properties": {
+          "kind": "unit",
+          "icon": "unit",
+          "faction": "CUB",
+          "date": null
+        },
+        "geometry": {
+          "type": "Point",
+          "coordinates": [
+            -105.033006,
+            36.036492
+          ]
+        }
+      },
+      {
+        "type": "Feature",
+        "properties": {
+          "kind": "unit",
+          "icon": "unit",
+          "faction": "CUB",
+          "date": null
+        },
+        "geometry": {
+          "type": "Point",
+          "coordinates": [
+            -105.823898,
+            35.644764
+          ]
+        }
+      },
+      {
+        "type": "Feature",
+        "properties": {
+          "kind": "unit",
+          "icon": "unit",
+          "faction": "CUB",
+          "date": null
+        },
+        "geometry": {
+          "type": "Point",
+          "coordinates": [
+            -106.175405,
+            37.024848
+          ]
+        }
+      },
+      {
+        "type": "Feature",
+        "properties": {
+          "kind": "unit",
+          "icon": "unit",
+          "faction": "CUB",
+          "date": null
+        },
+        "geometry": {
+          "type": "Point",
+          "coordinates": [
+            -106.526913,
+            35.644764
+          ]
+        }
+      },
+      {
+        "type": "Feature",
+        "properties": {
+          "kind": "unit",
+          "icon": "hq",
+          "faction": "CUB",
+          "date": null
+        },
+        "geometry": {
+          "type": "Point",
+          "coordinates": [
+            -107.932943,
+            41.87235
+          ]
+        }
+      },
+      {
+        "type": "Feature",
+        "properties": {
+          "kind": "unit",
+          "icon": "hq",
+          "faction": "CUB",
+          "date": null
+        },
+        "geometry": {
+          "type": "Point",
+          "coordinates": [
+            -108.943527,
+            41.28083
+          ]
+        }
+      },
+      {
+        "type": "Feature",
+        "properties": {
+          "kind": "unit",
+          "icon": "hq",
+          "faction": "CUB",
+          "date": null
+        },
+        "geometry": {
+          "type": "Point",
+          "coordinates": [
+            -107.669313,
+            40.249427
+          ]
+        }
+      },
+      {
+        "type": "Feature",
+        "properties": {
+          "kind": "unit",
+          "icon": "hq",
+          "faction": "CUB",
+          "date": null
+        },
+        "geometry": {
+          "type": "Point",
+          "coordinates": [
+            -110.305619,
+            40.014317
+          ]
+        }
+      },
+      {
+        "type": "Feature",
+        "properties": {
+          "kind": "unit",
+          "icon": "hq",
+          "faction": "CUB",
+          "date": null
+        },
+        "geometry": {
+          "type": "Point",
+          "coordinates": [
+            -106.702667,
+            41.379792
+          ]
+        }
+      },
+      {
+        "type": "Feature",
+        "properties": {
+          "kind": "unit",
+          "icon": "hq",
+          "faction": "CUB",
+          "date": null
+        },
+        "geometry": {
+          "type": "Point",
+          "coordinates": [
+            -110.349558,
+            42.198629
+          ]
+        }
+      }
+    ]
   }
 }
