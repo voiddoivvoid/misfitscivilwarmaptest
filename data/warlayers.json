@@ -1,0 +1,14 @@
+{
+  "pockets": {
+    "type": "FeatureCollection",
+    "features": []
+  },
+  "lines": {
+    "type": "FeatureCollection",
+    "features": []
+  },
+  "points": {
+    "type": "FeatureCollection",
+    "features": []
+  }
+}
